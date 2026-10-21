@@ -11,6 +11,10 @@ public class MapRenderer : MonoBehaviour
     [Header("Ruido")]
     public NoiseSettings ruido;
 
+    [Header("Autómata celular")]                
+    public CellularSettings automata;           
+    public Color colorHueco = new Color(0.1f, 0.1f, 0.1f); 
+
     [Header("Umbrales de altura (0 a 1)")]
     [Range(0f, 1f)] public float nivelAgua = 0.40f;
     [Range(0f, 1f)] public float nivelArena = 0.45f;
@@ -49,6 +53,12 @@ public class MapRenderer : MonoBehaviour
     {
         float[,] alturas = NoiseGenerator.Generar(ancho, alto, seed, ruido);
 
+        bool[,] huecos = null;
+        if (automata.activar)
+        {
+            huecos = CellularAutomata.Generar(ancho, alto, seed, automata);
+        }
+
         Texture2D tex = new Texture2D(ancho, alto);
         tex.filterMode = FilterMode.Point;
 
@@ -56,7 +66,17 @@ public class MapRenderer : MonoBehaviour
         {
             for (int y = 0; y < alto; y++)
             {
-                tex.SetPixel(x, y, ColorPorAltura(alturas[x, y]));
+                float h = alturas[x, y];
+                Color c = ColorPorAltura(h);
+
+                // si hay hueco en esta celda Y la altura está dentro de la zona, pintamos el hueco
+                if (huecos != null && huecos[x, y]
+                    && h >= automata.alturaMinima && h <= automata.alturaMaxima)
+                {
+                    c = colorHueco;
+                }
+
+                tex.SetPixel(x, y, c);
             }
         }
 
