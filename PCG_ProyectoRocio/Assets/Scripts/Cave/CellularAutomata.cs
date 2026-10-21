@@ -5,13 +5,13 @@ using UnityEngine;
 public class CellularSettings
 {
     public bool activar = true;                         // checkbox para prender/apagar el algoritmo
-    [Range(0f, 1f)] public float relleno = 0.45f;       // % de celdas vivas al inicio
-    [Range(0, 10)] public int iteraciones = 4;          // cuántas veces se repite la regla
+    [Range(0f, 1f)] public float relleno = 0.42f;       // % de celdas vivas al inicio
+    [Range(0, 10)] public int iteraciones = 5;          // cuántas veces se repite la regla
     [Range(0, 8)] public int limiteNacimiento = 5;      // vecinas vivas para que una celda muerta nazca
     [Range(0, 8)] public int limiteSupervivencia = 4;   // vecinas vivas para que una celda viva sobreviva
 
     [Header("Zona donde actúa (altura 0 a 1)")]
-    [Range(0f, 1f)] public float alturaMinima = 0.45f;
+    [Range(0f, 1f)] public float alturaMinima = 0.70f;
     [Range(0f, 1f)] public float alturaMaxima = 1f;
 }
 

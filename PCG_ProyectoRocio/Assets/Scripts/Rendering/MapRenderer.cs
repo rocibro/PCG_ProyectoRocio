@@ -13,13 +13,18 @@ public class MapRenderer : MonoBehaviour
 
     [Header("Autómata celular")]                
     public CellularSettings automata;           
-    public Color colorHueco = new Color(0.1f, 0.1f, 0.1f); 
+    public Color colorHueco = new Color(0.1f, 0.1f, 0.1f);
+
+    [Header("L-System")]                                            
+    public LSystemSettings lsystem;                                 
+    public Color colorTronco = new Color(0.4f, 0.25f, 0.1f, 1f);    
+    public Color colorHoja = new Color(0.05f, 0.4f, 0.1f, 1f);      
 
     [Header("Umbrales de altura (0 a 1)")]
     [Range(0f, 1f)] public float nivelAgua = 0.40f;
     [Range(0f, 1f)] public float nivelArena = 0.45f;
-    [Range(0f, 1f)] public float nivelPasto = 0.65f;
-    [Range(0f, 1f)] public float nivelRoca = 0.80f;
+    [Range(0f, 1f)] public float nivelPasto = 0.70f;
+    [Range(0f, 1f)] public float nivelRoca = 0.88f;
 
     [Header("Colores")]
     public Color colorAguaProfunda = new Color(0.1f, 0.2f, 0.6f);
@@ -51,14 +56,33 @@ public class MapRenderer : MonoBehaviour
 
     public void Generar()
     {
+        //terrenos con ruido
         float[,] alturas = NoiseGenerator.Generar(ancho, alto, seed, ruido);
 
-        bool[,] huecos = null;
+        //cuevas: el autómata solo cuenta dentro de su rango de altura
+        bool[,] cuevas = new bool[ancho, alto];                              
         if (automata.activar)
         {
-            huecos = CellularAutomata.Generar(ancho, alto, seed, automata);
+            bool[,] huecos = CellularAutomata.Generar(ancho, alto, seed, automata);
+            for (int x = 0; x < ancho; x++)
+            {
+                for (int y = 0; y < alto; y++)
+                {
+                    float h = alturas[x, y];
+                    cuevas[x, y] = huecos[x, y]
+                        && h >= automata.alturaMinima && h <= automata.alturaMaxima;
+                }
+            }
         }
 
+        //los árboles necesitan las alturas y saber dónde hay cuevas       
+        int[,] arboles = null;                                               
+        if (lsystem.activar)                                                 
+        {                                                                    
+            arboles = LSystemGenerator.Generar(ancho, alto, seed, lsystem, alturas, cuevas); 
+        }
+
+        //pintamos todo, de abajo hacia arriba: terreno, cuevas, árboles
         Texture2D tex = new Texture2D(ancho, alto);
         tex.filterMode = FilterMode.Point;
 
@@ -66,15 +90,15 @@ public class MapRenderer : MonoBehaviour
         {
             for (int y = 0; y < alto; y++)
             {
-                float h = alturas[x, y];
-                Color c = ColorPorAltura(h);
+                Color c = ColorPorAltura(alturas[x, y]);
 
-                // si hay hueco en esta celda Y la altura está dentro de la zona, pintamos el hueco
-                if (huecos != null && huecos[x, y]
-                    && h >= automata.alturaMinima && h <= automata.alturaMaxima)
-                {
-                    c = colorHueco;
-                }
+                if (cuevas[x, y]) c = colorHueco;
+
+                if (arboles != null)                                         
+                {                                                            
+                    if (arboles[x, y] == LSystemGenerator.RAMA) c = colorTronco; 
+                    if (arboles[x, y] == LSystemGenerator.HOJA) c = colorHoja;   
+                }                                                            
 
                 tex.SetPixel(x, y, c);
             }

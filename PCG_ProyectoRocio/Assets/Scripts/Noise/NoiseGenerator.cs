@@ -3,7 +3,7 @@ using UnityEngine;
 [System.Serializable] //agrupa los parámetros del ruido para poder editarlos en el inspector
 public class NoiseSettings
 {
-    public float escala = 30f;          // "zoom": más alto = manchas más grandes
+    public float escala = 40f;          // "zoom": más alto = manchas más grandes
     [Range(1, 8)] public int octavas = 4;          // capas de detalle
     [Range(0f, 1f)] public float persistencia = 0.5f; // cuánto pesa cada capa nueva
     public float lacunaridad = 2f;      // cuánto más fino es el detalle de cada capa
