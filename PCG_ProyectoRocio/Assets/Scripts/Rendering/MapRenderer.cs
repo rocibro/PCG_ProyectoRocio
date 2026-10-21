@@ -1,0 +1,76 @@
+using UnityEngine;
+using UnityEngine.UI;
+
+public class MapRenderer : MonoBehaviour
+{
+    public RawImage pantalla; //donde se mostrará la imagen
+    public int ancho = 128; //cantidad de celdas a lo ancho
+    public int alto = 128; //cantidad de celdas a lo alto
+    public int seed = 1;
+
+    [Header("Ruido")]
+    public NoiseSettings ruido;
+
+    [Header("Umbrales de altura (0 a 1)")]
+    [Range(0f, 1f)] public float nivelAgua = 0.40f;
+    [Range(0f, 1f)] public float nivelArena = 0.45f;
+    [Range(0f, 1f)] public float nivelPasto = 0.65f;
+    [Range(0f, 1f)] public float nivelRoca = 0.80f;
+
+    [Header("Colores")]
+    public Color colorAguaProfunda = new Color(0.1f, 0.2f, 0.6f);
+    public Color colorAgua = new Color(0.2f, 0.4f, 0.8f);
+    public Color colorArena = new Color(0.9f, 0.85f, 0.55f);
+    public Color colorPasto = new Color(0.2f, 0.6f, 0.2f);
+    public Color colorRoca = new Color(0.5f, 0.5f, 0.5f);
+    public Color colorNieve = Color.white;
+
+    void Start()
+    {
+        Generar();
+    }
+
+    void Update()
+    {
+        // Barra espaciadora = nueva seed al azar
+        if (Input.GetKeyDown(KeyCode.Space))
+        {
+            seed = Random.Range(0, 100000);
+            Generar();
+        }
+        // Tecla G = regenerar con los valores actuales
+        if (Input.GetKeyDown(KeyCode.G))
+        {
+            Generar();
+        }
+    }
+
+    public void Generar()
+    {
+        float[,] alturas = NoiseGenerator.Generar(ancho, alto, seed, ruido);
+
+        Texture2D tex = new Texture2D(ancho, alto);
+        tex.filterMode = FilterMode.Point;
+
+        for (int x = 0; x < ancho; x++)
+        {
+            for (int y = 0; y < alto; y++)
+            {
+                tex.SetPixel(x, y, ColorPorAltura(alturas[x, y]));
+            }
+        }
+
+        tex.Apply();
+        pantalla.texture = tex;
+    }
+
+    Color ColorPorAltura(float h)
+    {
+        if (h < nivelAgua * 0.6f) return colorAguaProfunda;
+        if (h < nivelAgua) return colorAgua;
+        if (h < nivelArena) return colorArena;
+        if (h < nivelPasto) return colorPasto;
+        if (h < nivelRoca) return colorRoca;
+        return colorNieve;
+    }
+}
