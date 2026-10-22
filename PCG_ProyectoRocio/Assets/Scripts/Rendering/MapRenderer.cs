@@ -8,7 +8,7 @@ public class MapRenderer : MonoBehaviour
     public int ancho = 128; //cantidad de celdas a lo ancho
     public int alto = 128; //cantidad de celdas a lo alto
     public int seed = 1;
-
+    Texture2D texturaActual;   // para borrar la textura anterior y no acumular memoria
     [Header("Ruido")]
     public NoiseSettings ruido;
 
@@ -168,11 +168,13 @@ public class MapRenderer : MonoBehaviour
 
     public void Generar()
     {
-        //terrenos con ruido
+        float inicio = Time.realtimeSinceStartup;   // para medir cuánto demora
+
+        // 1) Terreno con ruido
         float[,] alturas = NoiseGenerator.Generar(ancho, alto, seed, ruido);
 
-        //cuevas: el autómata solo cuenta dentro de su rango de altura
-        bool[,] cuevas = new bool[ancho, alto];                              
+        // 2) Cuevas: el autómata solo cuenta dentro de su rango de altura
+        bool[,] cuevas = new bool[ancho, alto];
         if (automata.activar)
         {
             bool[,] huecos = CellularAutomata.Generar(ancho, alto, seed, automata);
@@ -187,37 +189,71 @@ public class MapRenderer : MonoBehaviour
             }
         }
 
-        //los árboles necesitan las alturas y saber dónde hay cuevas       
-        int[,] arboles = null;                                               
-        if (lsystem.activar)                                                 
-        {                                                                    
-            arboles = LSystemGenerator.Generar(ancho, alto, seed, lsystem, alturas, cuevas); 
+        // 3) Árboles
+        int[,] arboles = null;
+        if (lsystem.activar)
+        {
+            arboles = LSystemGenerator.Generar(ancho, alto, seed, lsystem, alturas, cuevas);
         }
 
-        //pintamos todo, de abajo hacia arriba: terreno, cuevas, árboles
+        // 4) Pintamos todo y vamos contando
         Texture2D tex = new Texture2D(ancho, alto);
         tex.filterMode = FilterMode.Point;
+
+        int[] bandas = new int[5];   // cuántas celdas hay en cada banda de altura
+        int celdasCueva = 0;
 
         for (int x = 0; x < ancho; x++)
         {
             for (int y = 0; y < alto; y++)
             {
-                Color c = ColorPorAltura(alturas[x, y]);
+                float h = alturas[x, y];
+                Color c = ColorPorAltura(h);
+                bandas[IndiceBanda(h)]++;
 
-                if (cuevas[x, y]) c = colorHueco;
+                if (cuevas[x, y]) { c = colorHueco; celdasCueva++; }
 
-                if (arboles != null)                                         
-                {                                                            
-                    if (arboles[x, y] == LSystemGenerator.RAMA) c = colorTronco; 
-                    if (arboles[x, y] == LSystemGenerator.HOJA) c = colorHoja;   
-                }                                                            
+                if (arboles != null)
+                {
+                    if (arboles[x, y] == LSystemGenerator.RAMA) c = colorTronco;
+                    if (arboles[x, y] == LSystemGenerator.HOJA) c = colorHoja;
+                }
 
                 tex.SetPixel(x, y, c);
             }
         }
 
         tex.Apply();
+
+        // Borramos la textura anterior para no acumular memoria
+        if (texturaActual != null) Destroy(texturaActual);
+        texturaActual = tex;
         pantalla.texture = tex;
+
+        // 5) Métricas: se escriben en la Console
+        float ms = (Time.realtimeSinceStartup - inicio) * 1000f;
+        float total = ancho * alto;
+
+        Debug.Log("MÉTRICAS (" + ancho + "x" + alto + ", seed " + seed + ")\n" +
+            "Agua/lava: " + (100f * bandas[0] / total).ToString("F1") + "%\n" +
+            "Arena/costra: " + (100f * bandas[1] / total).ToString("F1") + "%\n" +
+            "Pasto/basalto: " + (100f * bandas[2] / total).ToString("F1") + "%\n" +
+            "Roca: " + (100f * bandas[3] / total).ToString("F1") + "%\n" +
+            "Nieve/ceniza: " + (100f * bandas[4] / total).ToString("F1") + "%\n" +
+            "Cuevas: " + (100f * celdasCueva / total).ToString("F1") + "%\n" +
+            "Árboles: " + LSystemGenerator.arbolesColocados +
+            " | Largo del texto: " + LSystemGenerator.largoCadena + "\n" +
+            "Tiempo: " + ms.ToString("F1") + " ms");
+    }
+
+    // Dice en qué banda de altura cae un valor: 0 agua, 1 arena, 2 pasto, 3 roca, 4 nieve
+    int IndiceBanda(float h)
+    {
+        if (h < nivelAgua) return 0;
+        if (h < nivelArena) return 1;
+        if (h < nivelPasto) return 2;
+        if (h < nivelRoca) return 3;
+        return 4;
     }
 
     Color ColorPorAltura(float h)
